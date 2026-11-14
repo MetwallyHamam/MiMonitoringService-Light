@@ -1,5 +1,5 @@
 #define MyAppName "MiMonitoringService"
-#define MyAppVersion "0.1.2"
+#define MyAppVersion "0.1.3"
 #define MyAppPublisher "Millensys"
 #define MyAppExeName "MiMonitoringService.exe"
 

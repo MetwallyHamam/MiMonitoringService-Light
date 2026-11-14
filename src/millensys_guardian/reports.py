@@ -8,19 +8,23 @@ from .analytics_report import ReportPeriod, export_pdf
 from .notifier import Notifier, branded_html
 from .scheduler import configured_timezone, latest_occurrence
 from .store import Store
+from .time_utils import server_time_text, server_timezone
 
 
 def queue_period_report(store: Store, period: str = "daily", now: datetime | None = None) -> None:
-    current = now or datetime.now(UTC)
+    config = store.get("configuration")
+    zone = server_timezone(config)
+    current = (now or datetime.now(UTC)).astimezone(zone)
     current_utc = current.astimezone(UTC)
     if period == "daily":
         since = (current_utc - timedelta(days=1)).isoformat()
     else:
-        first_this_month = current_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        first_this_month = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         previous_month_end = first_this_month - timedelta(microseconds=1)
-        since = previous_month_end.replace(
+        period_start = previous_month_end.replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
-        ).isoformat()
+        )
+        since = period_start.astimezone(UTC).isoformat()
     with store.connect() as db:
         rows = list(
             db.execute("SELECT * FROM events WHERE created_at>=? ORDER BY id DESC", (since,))
@@ -31,12 +35,11 @@ def queue_period_report(store: Store, period: str = "daily", now: datetime | Non
     ][:30]
     list_html = (
         "".join(
-            f"<tr><td style='padding:8px'>{escape(row['created_at'][:19])}</td><td>{escape(row['severity'])}</td><td>{escape(row['target'])}</td><td>{escape(row['message'])}</td></tr>"
+            f"<tr><td style='padding:8px'>{escape(server_time_text(row['created_at'], config))}</td><td>{escape(row['severity'])}</td><td>{escape(row['target'])}</td><td>{escape(row['message'])}</td></tr>"
             for row in notable
         )
         or "<tr><td colspan='4' style='padding:16px'>No notable incidents in this period.</td></tr>"
     )
-    config = store.get("configuration")
     report_config = config.get("reports", {})
     client = config.get("client", {})
     sections = []
@@ -55,7 +58,6 @@ def queue_period_report(store: Store, period: str = "daily", now: datetime | Non
     recipients = report_config.get("recipients") or config["email"].get("recipients", [])
     attachments: list[str] = []
     if period == "monthly" and report_config.get("monthly_analytics_attachment", True):
-        period_start = datetime.fromisoformat(since)
         report_period = ReportPeriod(period_start, previous_month_end)
         client_name = str(client.get("name") or "Client").strip().replace(" ", "-")
         filename = store.path.parent / "reports" / f"{client_name}-analytics-{period_start:%Y-%m}.pdf"
@@ -76,7 +78,7 @@ class ReportScheduler:
     def process(self, now: datetime | None = None) -> None:
         config = self.store.get("configuration")
         reports = config.get("reports", {})
-        timezone = configured_timezone(config["agent"].get("timezone", "UTC"))
+        timezone = configured_timezone(config["agent"].get("timezone", "SERVER_LOCAL"))
         current = (now or datetime.now(UTC)).astimezone(timezone)
         definitions = (
             (

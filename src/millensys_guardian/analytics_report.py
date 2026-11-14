@@ -35,11 +35,11 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .scheduler import configured_timezone
 from .sql_jobs import job_intelligence
 from .sql_performance import performance_baselines
 from .store import Store
 from .system_info import server_identity
+from .time_utils import parse_timestamp, server_time_text, server_timezone
 
 NAVY = "#101c35"
 TEAL = "#20aebe"
@@ -62,7 +62,7 @@ class ReportPeriod:
 
 def this_month(store: Store, now: datetime | None = None) -> ReportPeriod:
     config = store.get("configuration")
-    zone = configured_timezone(config.get("agent", {}).get("timezone", "UTC"))
+    zone = server_timezone(config)
     current = (now or datetime.now(UTC)).astimezone(zone)
     return ReportPeriod(
         datetime.combine(current.date().replace(day=1), time.min, zone),
@@ -99,6 +99,7 @@ def _availability(events: list[dict[str, Any]], target: str, category: str, peri
 def build_analytics(store: Store, period: ReportPeriod) -> dict[str, Any]:
     since, until = _utc(period.start), _utc(period.end + timedelta(microseconds=1))
     config = store.get("configuration")
+    zone = server_timezone(config)
     profiles = {str(item.get("id") or item.get("server")): item
                 for item in config.get("sql_monitors", [])}
     with store.connect() as db:
@@ -115,6 +116,8 @@ def build_analytics(store: Store, period: ReportPeriod) -> dict[str, Any]:
     job_rows = [dict(row) for row in store.sql_job_history() if row["run_at"] and since <= row["run_at"] < until]
     performance_rows = [dict(row) for row in store.sql_performance_samples(since) if row["collected_at"] < until]
     query_evidence = [dict(row) for row in store.sql_query_evidence(since, limit=5000) if row["collected_at"] < until]
+    for event in events:
+        event["display_created_at"] = server_time_text(event.get("created_at"), config, "%Y-%m-%d %H:%M")
     performance_grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in performance_rows:
         performance_grouped[row["profile_id"]].append(row)
@@ -182,7 +185,7 @@ def build_analytics(store: Store, period: ReportPeriod) -> dict[str, Any]:
         })
     backup_by_day: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in backups:
-        backup_by_day[row["checked_at"][:10]].append(row)
+        backup_by_day[parse_timestamp(row["checked_at"]).astimezone(zone).date().isoformat()].append(row)
     backup_days = []
     day = period.start.date()
     while day <= period.end.date():
@@ -522,7 +525,7 @@ def export_docx(store: Store, period: ReportPeriod, destination: Path) -> Path:
         document.add_paragraph("Active request evidence is captured only when a request exceeds the configured duration. Query content is normalized with literal values redacted; source identifies stored procedures, triggers, ad hoc batches, database objects, or system work when SQL Server exposes that metadata.")
         _docx_table(document, ["Evidence", "Source", "Object / database", "Normalized query content", "Duration", "CPU", "Reads", "Evidence ID"], [[f"Query {rank}", i.get("source_type") or "Active request", i.get("source_name") or i["database_name"] or "Database not exposed", (i.get("query_text") or "Available after collector upgrade")[:240], f"{i['duration_ms']/1000:,.1f}s", f"{i['cpu_ms']/1000:,.1f}s", f"{i['logical_reads']:,}", str(i["query_signature"])[-12:]] for rank, i in enumerate(report["top_queries"][:10], 1)] or [["No active-query evidence", "-", "-", "-", "-", "-", "-", "-"]])
         document.add_heading("4 Incidents and warnings", level=1)
-        _docx_table(document, ["Time", "Severity", "Target", "Description"], [[e["created_at"][:16].replace("T", " "), e["severity"].title(), e["target"], e["message"]] for e in report["incidents"][:100]] or [["-", "None", "-", "No incidents or warnings recorded"]])
+        _docx_table(document, ["Time", "Severity", "Target", "Description"], [[e["display_created_at"], e["severity"].title(), e["target"], e["message"]] for e in report["incidents"][:100]] or [["-", "None", "-", "No incidents or warnings recorded"]])
         document.add_heading("5 Services stability", level=1)
         _docx_table(document, ["Windows service", "Availability", "Incident events"], [[i["name"], f"{i['availability']:.3f}%", str(i["incidents"])] for i in report["services"]] or [["No monitored services", "-", "-"]])
         document.add_heading("6 Pools stability", level=1)
@@ -577,7 +580,7 @@ def export_pdf(store: Store, period: ReportPeriod, destination: Path) -> Path:
         story.append(Spacer(1, 2*mm))
         add_table(["Evidence","Source","Object / database","Normalized query content","Duration","CPU","Reads","Evidence ID"], [[f"Query {rank}",i.get("source_type") or "Active request",i.get("source_name") or i["database_name"] or "Database not exposed",(i.get("query_text") or "Available after collector upgrade")[:240],f"{i['duration_ms']/1000:,.1f}s",f"{i['cpu_ms']/1000:,.1f}s",f"{i['logical_reads']:,}",str(i["query_signature"])[-12:]] for rank,i in enumerate(report["top_queries"][:10],1)] or [["No active-query evidence","-","-","-","-","-","-","-"]], [22*mm,34*mm,48*mm,80*mm,25*mm,22*mm,24*mm,42*mm])
         add_heading("4 Incidents and warnings")
-        add_table(["Time","Severity","Target","Description"], [[e["created_at"][:16].replace("T", " "),e["severity"].title(),e["target"],e["message"]] for e in report["incidents"][:100]] or [["-","None","-","No incidents or warnings recorded"]], [34*mm,22*mm,38*mm,76*mm])
+        add_table(["Time","Severity","Target","Description"], [[e["display_created_at"],e["severity"].title(),e["target"],e["message"]] for e in report["incidents"][:100]] or [["-","None","-","No incidents or warnings recorded"]], [34*mm,22*mm,38*mm,76*mm])
         add_heading("5 Services stability")
         add_table(["Windows service","Availability","Incident events"], [[i["name"],f"{i['availability']:.3f}%",str(i["incidents"])] for i in report["services"]] or [["No monitored services","-","-"]], [100*mm,35*mm,35*mm])
         add_heading("6 Pools stability")

@@ -50,7 +50,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "poll_seconds": 30,
         "debug": False,
         "automatic_actions": True,
-        "timezone": "Africa/Cairo",
+        "timezone": "SERVER_LOCAL",
         "close_to_tray": True,
         "start_minimized": False,
     },
@@ -349,6 +349,11 @@ class Store:
             configuration.setdefault("assurance", {})["snapshot_interval_seconds"] = 60
             self.set("configuration", configuration)
             self.set("assurance_refresh_v2", True)
+        if self.get_raw("server_local_timezone_v1") is None:
+            configuration = self.get("configuration")
+            configuration.setdefault("agent", {})["timezone"] = "SERVER_LOCAL"
+            self.set("configuration", configuration)
+            self.set("server_local_timezone_v1", True)
         if self.get_raw("sql_cpu_process_utilization_v3") is None:
             # Earlier builds stored 100 - ProcessUtilization, so their SQL CPU history is inverted.
             # Preserve every other performance metric while invalidating only the incorrect field.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import hashlib
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .actions import pool_action, restart_service, service_action
@@ -17,9 +17,11 @@ class DueAction:
     grace_minutes: int
 
 
-def configured_timezone(name: str | None) -> ZoneInfo:
+def configured_timezone(name: str | None) -> tzinfo:
+    if not name or str(name).upper() in {"SERVER_LOCAL", "LOCAL"}:
+        return datetime.now().astimezone().tzinfo or UTC
     try:
-        return ZoneInfo(name or "UTC")
+        return ZoneInfo(name)
     except ZoneInfoNotFoundError:
         return ZoneInfo("UTC")
 
@@ -31,7 +33,7 @@ def _clock(value: str, default: time = time(2, 0)) -> time:
         return default
 
 
-def _monthly_at(day: int, reference: date, clock: time, tz: ZoneInfo) -> datetime:
+def _monthly_at(day: int, reference: date, clock: time, tz: tzinfo) -> datetime:
     actual_day = min(max(day, 1), calendar.monthrange(reference.year, reference.month)[1])
     return datetime.combine(reference.replace(day=actual_day), clock, tz)
 

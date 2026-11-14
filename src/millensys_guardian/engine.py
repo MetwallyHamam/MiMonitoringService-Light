@@ -35,7 +35,9 @@ class MonitorEngine:
         self.thresholds = SustainedThresholds()
         self.log = logging.getLogger("guardian.engine")
         config = store.get("configuration")
-        self.scheduler = SafeScheduler(store, config.get("agent", {}).get("timezone", "UTC"))
+        self.scheduler = SafeScheduler(
+            store, config.get("agent", {}).get("timezone", "SERVER_LOCAL")
+        )
         self.report_scheduler = ReportScheduler(store)
         self.last_retention = 0.0
 
@@ -116,7 +118,9 @@ class MonitorEngine:
     def run_cycle(self) -> None:
         config = self.store.get("configuration")
         self._heartbeat("running")
-        self.scheduler.timezone = configured_timezone(config["agent"].get("timezone", "UTC"))
+        self.scheduler.timezone = configured_timezone(
+            config["agent"].get("timezone", "SERVER_LOCAL")
+        )
         selected_services = {
             row["target_key"]: row for row in self.store.targets("service") if row["enabled"]
         }

@@ -4,7 +4,8 @@ import json
 import math
 from datetime import datetime
 from typing import Any
-from zoneinfo import ZoneInfo
+
+from .scheduler import configured_timezone
 
 IGNORED_WAITS = {"BROKER_EVENTHANDLER", "BROKER_RECEIVE_WAITFOR", "CHECKPOINT_QUEUE", "LAZYWRITER_SLEEP", "LOGMGR_QUEUE", "REQUEST_FOR_DEADLOCK_SEARCH", "SLEEP_TASK", "SQLTRACE_BUFFER_FLUSH", "WAITFOR", "XE_DISPATCHER_WAIT", "XE_TIMER_EVENT"}
 
@@ -116,10 +117,7 @@ def period_baseline_comparison(
     rows: list[Any], current: dict[str, Any], timezone_name: str = "UTC"
 ) -> dict[str, Any]:
     """Compare the current sample with the same local hour and weekday history."""
-    try:
-        zone = ZoneInfo(timezone_name)
-    except (KeyError, ValueError):
-        zone = ZoneInfo("UTC")
+    zone = configured_timezone(timezone_name)
     current_time = datetime.fromisoformat(str(current["collected_at"])).astimezone(zone)
     same_hour = []
     same_weekday = []

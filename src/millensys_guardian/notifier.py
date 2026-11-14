@@ -13,6 +13,7 @@ from pathlib import Path
 from .security import unprotect
 from .store import Store, utc_now
 from .system_info import server_identity
+from .time_utils import server_time_text
 
 
 def branded_html(title: str, body: str, severity: str = "info") -> str:
@@ -23,7 +24,7 @@ def branded_html(title: str, body: str, severity: str = "info") -> str:
     <table width="640" role="presentation" style="max-width:640px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px #15213a1f">
     <tr><td style="background:#101c35;padding:24px 30px;color:#fff"><div style="font-size:12px;letter-spacing:2px;color:#8ab4ff">MILLENSYS</div><div style="font-size:22px;font-weight:700;margin-top:6px">MiMonitoringService</div></td></tr>
     <tr><td style="height:5px;background:{color}"></td></tr><tr><td style="padding:30px"><h2 style="margin:0 0 16px">{escape(title)}</h2>{body}</td></tr>
-    <tr><td style="padding:18px 30px;background:#f7f9fc;color:#64748b;font-size:12px">Automated infrastructure notification · {escape(utc_now())}</td></tr>
+    <tr><td style="padding:18px 30px;background:#f7f9fc;color:#64748b;font-size:12px">Automated infrastructure notification · __SERVER_TIME__</td></tr>
     </table></td></tr></table></body></html>"""
 
 
@@ -265,5 +266,6 @@ class Notifier:
             f"<b>MAC address:</b> {escape(identity.mac_address)}"
             "</div>"
         )
+        html = html.replace("__SERVER_TIME__", escape(server_time_text(utc_now(), config)))
         marker = "<tr><td style=\"padding:18px 30px;background:#f7f9fc"
         return html.replace(marker, f"<tr><td style='padding:0 30px'>{block}</td></tr>{marker}", 1)

@@ -1,3 +1,4 @@
+import millensys_guardian.notifier as notifier_module
 from millensys_guardian.notifier import Notifier, branded_html
 from millensys_guardian.store import Store
 
@@ -37,3 +38,19 @@ def test_recovery_commits_alert_before_queueing_email(tmp_path):
         ).fetchone()
         assert state["active"] == 0
         assert db.execute("SELECT COUNT(*) FROM mail_queue").fetchone()[0] == 2
+
+
+def test_notification_footer_renders_server_time_not_utc_placeholder(tmp_path, monkeypatch):
+    store = Store(tmp_path / "test.db")
+    config = store.get("configuration")
+    config["agent"]["timezone"] = "Africa/Cairo"
+    config["email"]["recipients"] = ["ops@example.com"]
+    store.set("configuration", config)
+    monkeypatch.setattr(notifier_module, "utc_now", lambda: "2026-11-14T10:00:00+00:00")
+
+    Notifier(store).enqueue("Server time", branded_html("Server time", "body"))
+
+    with store.connect() as db:
+        html = db.execute("SELECT html FROM mail_queue").fetchone()[0]
+    assert "__SERVER_TIME__" not in html
+    assert "2026-11-14 12:00:00" in html

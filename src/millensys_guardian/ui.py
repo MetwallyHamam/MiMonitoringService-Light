@@ -67,8 +67,13 @@ from .sql_monitor import kill_sessions, start_agent_job
 from .sql_monitor import test_connection as test_sql_connection
 from .store import Store
 from .system_info import server_identity
+from .time_utils import server_time_text, server_timezone
 
 COPYRIGHT = "© 2026 Millensys Support Department | Eng.Metwally Hammam"
+
+
+def display_server_time(store: Store, value: str | datetime | None, pattern: str = "%Y-%m-%d %H:%M:%S") -> str:
+    return server_time_text(value, store.get("configuration"), pattern)
 
 
 def open_user_guide(parent: QWidget | None = None) -> None:
@@ -1065,7 +1070,7 @@ class ComponentChangesDialog(QDialog):
             status.setData(Qt.ItemDataRole.UserRole + 1, str(row["item_key"]))
             self.table.setItem(index, 0, status)
             values = (
-                str(row["detected_at"])[:19],
+                display_server_time(self.store, row["detected_at"]),
                 str(row["component_type"]),
                 str(row["item_name"]),
                 friendly_property_name(str(row["property_name"])),
@@ -1206,7 +1211,7 @@ class ScoreIncidentsDialog(QDialog):
             status = QTableWidgetItem(str(row["status"]).title())
             status.setData(Qt.ItemDataRole.UserRole, int(row["id"]))
             self.table.setItem(index, 0, status)
-            self.table.setItem(index, 1, QTableWidgetItem(str(row["opened_at"])[:19]))
+            self.table.setItem(index, 1, QTableWidgetItem(display_server_time(self.store, row["opened_at"])))
             self.table.setItem(index, 2, QTableWidgetItem(str(row["target"])))
             self.table.setItem(index, 3, QTableWidgetItem(str(row["title"])))
             self.table.setItem(index, 4, QTableWidgetItem(f"-{row['deduction']}%"))
@@ -1254,7 +1259,7 @@ class TargetHistoryDialog(QDialog):
         for row_index, row in enumerate(rows):
             for column, value in enumerate(
                 (
-                    row["created_at"][:19].replace("T", " "),
+                    display_server_time(self.store, row["created_at"]),
                     row["severity"],
                     row["category"],
                     row["message"],
@@ -2981,7 +2986,7 @@ class MainWindow(QMainWindow):
                 str(item.get("message", "")) for item in tempdb_states if item.get("message")
             )
             self.database_freshness.setText(
-                f"Latest capacity sample: {max(str(value) for value in checked)}. "
+                f"Latest capacity sample: {display_server_time(self.store, max(str(value) for value in checked))}. "
                 "Capacity warnings do not mean the SQL connection failed. "
                 + tempdb_message
             )
@@ -3045,7 +3050,7 @@ class MainWindow(QMainWindow):
         self.database_chain_timeline.set_history(history_rows)
         backup_errors = [str(state.get("error")) for state in backup_states if state.get("error")]
         backup_checked = [str(state.get("checked_at")) for state in backup_states if state.get("checked_at")]
-        self.database_backup_freshness.setText("Backup evidence unavailable: " + " | ".join(backup_errors[:3]) if backup_errors else f"Latest SQL-native backup assessment: {max(backup_checked)}" if backup_checked else "No SQL-native backup evidence collected yet.")
+        self.database_backup_freshness.setText("Backup evidence unavailable: " + " | ".join(backup_errors[:3]) if backup_errors else f"Latest SQL-native backup assessment: {display_server_time(self.store, max(backup_checked))}" if backup_checked else "No SQL-native backup evidence collected yet.")
         self.database_backup_table.setRowCount(len(backup_checks))
         for row, check in enumerate(backup_checks):
             age = check.get("age_hours")
@@ -3108,7 +3113,7 @@ class MainWindow(QMainWindow):
         if self.analytics_period.currentText() == "This month":
             return this_month(self.store)
         config = self.store.get("configuration")
-        zone = ZoneInfo(config.get("agent", {}).get("timezone", "UTC"))
+        zone = server_timezone(config)
         start = self.analytics_start.date().toPython()
         end = self.analytics_end.date().toPython()
         if end < start:
@@ -3806,9 +3811,9 @@ class MainWindow(QMainWindow):
         self.close_to_tray.setChecked(config["agent"].get("close_to_tray", True))
         self.start_minimized = QCheckBox("Start the console minimized in the system tray")
         self.start_minimized.setChecked(config["agent"].get("start_minimized", False))
-        self.timezone = QLineEdit(config["agent"].get("timezone", "Africa/Cairo"))
-        self.timezone.setPlaceholderText("Example: Africa/Cairo")
-        self.timezone.setToolTip("IANA timezone used for all schedules and maintenance windows.")
+        self.timezone = QLineEdit(config["agent"].get("timezone", "SERVER_LOCAL"))
+        self.timezone.setPlaceholderText("SERVER_LOCAL or example: Africa/Cairo")
+        self.timezone.setToolTip("SERVER_LOCAL uses the Windows server clock. Enter an IANA timezone only when explicitly required.")
         diagnostics = config.get("diagnostics", {})
         self.retention_days = QSpinBox()
         self.retention_days.setRange(1, 3650)
@@ -3827,7 +3832,7 @@ class MainWindow(QMainWindow):
         form.addRow("Disk warning threshold", self.disk_threshold)
         form.addRow("Sustained breach duration", self.sustain_seconds)
         form.addRow("Automatic actions", self.automatic_actions)
-        form.addRow("Schedule timezone", self.timezone)
+        form.addRow("Server timezone", self.timezone)
         form.addRow("Diagnostic retention", self.retention_days)
         form.addRow("Maximum audit events", self.maximum_events)
         form.addRow("Dashboard trend period", self.trend_hours)
@@ -4155,7 +4160,7 @@ class MainWindow(QMainWindow):
                 color="#58d68d",
             )
         for row in active:
-            since = (row["first_seen"] or row["last_seen"])[:19].replace("T", " ")
+            since = display_server_time(self.store, row["first_seen"] or row["last_seen"])
             severity_icon = "●" if row["severity"] in {"critical", "error"} else "▲"
             self.add_dashboard_item(
                 self.dashboard_issues,
@@ -4274,7 +4279,7 @@ class MainWindow(QMainWindow):
         self.performance_peaks_table.setRowCount(len(peaks))
         for row_index, peak_row in enumerate(peaks):
             values = (
-                peak_row["created_at"][:19].replace("T", " "),
+                display_server_time(self.store, peak_row["created_at"]),
                 f"{peak_row['cpu']:.1f}%",
                 f"{peak_row['memory']:.1f}%",
                 peak_row["root_cause"] or "No attribution available",
@@ -4309,7 +4314,7 @@ class MainWindow(QMainWindow):
         elif sql_runtime.get("checked_at"):
             hour_p95 = comparison.get("same_hour", {}).get("p95")
             day_p95 = comparison.get("same_weekday", {}).get("p95")
-            freshness = (f"Latest sample: {sql_runtime['checked_at']} · {comparison.get('weekday', 'Local day')} at "
+            freshness = (f"Latest sample: {display_server_time(self.store, sql_runtime['checked_at'])} · {comparison.get('weekday', 'Local day')} at "
                          f"{comparison.get('local_hour', 0):02d}:00 baseline · same-hour CPU P95 "
                          f"{'needs history' if hour_p95 is None else f'{hour_p95:.1f}%'} · same-weekday P95 "
                          f"{'needs history' if day_p95 is None else f'{day_p95:.1f}%'}")
@@ -4342,7 +4347,7 @@ class MainWindow(QMainWindow):
             self.sql_session_freshness.setText(f"Session inventory unavailable: {session_error}")
         elif checked_at:
             self.sql_session_freshness.setText(
-                f"Latest interval: {checked_at} · {len(session_rows)} user session(s) · "
+                f"Latest interval: {display_server_time(self.store, checked_at)} · {len(session_rows)} user session(s) · "
                 f"{int(session_state.get('blocking_count', 0))} blocked · "
                 f"{int(session_state.get('blocker_count', 0))} blocker(s)"
             )
@@ -4398,7 +4403,7 @@ class MainWindow(QMainWindow):
             if item.get("wait_type"): wait += f" · {item['wait_type']}"
             if item.get("wait_ms"): wait += f" · {int(item['wait_ms']) / 1000:,.1f}s"
             role = "Blocker" if item.get("is_blocker") else "Blocked"
-            values = (str(item.get("collected_at", "")).replace("T", " ")[:19], item.get("session_id"), role, item.get("blocking_session_id") or "—", wait, item.get("database_name") or "—", source, preview)
+            values = (display_server_time(self.store, item.get("collected_at")), item.get("session_id"), role, item.get("blocking_session_id") or "—", wait, item.get("database_name") or "—", source, preview)
             tooltip = (f"SPID {item.get('session_id')} · {role}\nBlocked by: {item.get('blocking_session_id') or 'No'}\n"
                        f"Login: {item.get('login_name') or 'Unknown'}\nHost: {item.get('host_name') or 'Unknown'}\n"
                        f"Application: {item.get('application_name') or 'Unknown'}\nSource: {source}\n\n"
@@ -4418,7 +4423,7 @@ class MainWindow(QMainWindow):
             setting = str(change["property_name"])
             scope = "Database" if setting.startswith("database/") else "Server"
             values = (
-                str(change["detected_at"])[:19].replace("T", " "),
+                display_server_time(self.store, change["detected_at"]),
                 scope,
                 setting.split("/", 2)[-1],
                 str(change["old_value"]),
@@ -4448,7 +4453,7 @@ class MainWindow(QMainWindow):
             if victim.get("application"):
                 source += f" · {victim['application']}"
             values = (
-                str(details.get("occurred_at") or event["created_at"])[:19].replace("T", " "),
+                display_server_time(self.store, details.get("occurred_at") or event["created_at"]),
                 f"SPID {victim.get('spid') or 'unknown'}",
                 f"Database ID {victim.get('database_id') or 'unknown'}",
                 source,
@@ -4498,7 +4503,7 @@ class MainWindow(QMainWindow):
         for row_index, row in enumerate(rows):
             for col, value in enumerate(
                 (
-                    row["created_at"].replace("T", " ")[:19],
+                    display_server_time(self.store, row["created_at"]),
                     row["severity"],
                     row["category"],
                     row["target"],
@@ -4693,14 +4698,15 @@ class MainWindow(QMainWindow):
             table.setRowHidden(row, bool(query and item and query not in item.text().casefold()))
 
     def save_settings(self, show_confirmation: bool = True) -> bool:
-        timezone_name = self.timezone.text().strip() or "UTC"
+        timezone_name = self.timezone.text().strip() or "SERVER_LOCAL"
         try:
-            ZoneInfo(timezone_name)
+            if timezone_name.upper() not in {"SERVER_LOCAL", "LOCAL"}:
+                ZoneInfo(timezone_name)
         except ZoneInfoNotFoundError:
             QMessageBox.warning(
                 self,
                 "Invalid timezone",
-                "Enter a valid IANA timezone such as Africa/Cairo or UTC.",
+                "Enter SERVER_LOCAL or a valid IANA timezone such as Africa/Cairo.",
             )
             return False
         config = self.store.get("configuration")

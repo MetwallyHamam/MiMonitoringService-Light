@@ -102,3 +102,25 @@ def test_monthly_report_queues_full_analytics_pdf_attachment(tmp_path):
         attachment = db.execute("SELECT attachments FROM mail_queue").fetchone()[0]
     assert "Example-Client-analytics-2026-11.pdf" in attachment
     assert (tmp_path / "reports" / "Example-Client-analytics-2026-11.pdf").is_file()
+
+
+def test_daily_report_displays_event_time_in_server_timezone(tmp_path):
+    store = Store(tmp_path / "reports.db")
+    config = store.get("configuration")
+    config["agent"]["timezone"] = "Africa/Cairo"
+    config["email"]["recipients"] = ["ops@example.com"]
+    store.set("configuration", config)
+    store.add_event("warning", "test", "server", "Timezone event")
+    with store.connect() as db:
+        db.execute(
+            "UPDATE events SET created_at=? WHERE message=?",
+            ("2026-11-14T10:00:00+00:00", "Timezone event"),
+        )
+
+    queue_period_report(
+        store, "daily", datetime(2026, 11, 14, 14, tzinfo=ZoneInfo("Africa/Cairo"))
+    )
+
+    with store.connect() as db:
+        html = db.execute("SELECT html FROM mail_queue").fetchone()[0]
+    assert "2026-11-14 12:00:00" in html

@@ -8,12 +8,13 @@ history, superseded ideas, release hashes, and repeated session logs have been r
 ## Current position
 
 - **Current milestone:** SQL monitoring hardening and release validation
-- **Latest completed work:** SQL session/blocking monitoring, guarded multi-session termination,
-  lightweight backup-file assurance, and senior-review safety fixes
-- **Automated verification:** Ruff passed; 108 tests passed in 125.60 seconds
-- **Current release:** v0.1.2 full private package built and integrity-verified
-- **Workspace state:** Source version and packaged artifacts are aligned at v0.1.2
-- **Next release step:** Complete live SQL validation and final interactive visual review before deployment
+- **Latest completed work:** Server-local display time across the GUI, reports, and notifications;
+  SQL session/blocking monitoring; guarded multi-session termination; and backup-file assurance
+- **Automated verification:** Ruff passed; 112 tests passed in 116.12 seconds
+- **Current release:** v0.1.3 full private package built and integrity-verified
+- **Workspace state:** Source version and packaged artifacts are aligned at v0.1.3
+- **Next release step:** Complete live SQL validation, upgrade/migration testing, and final
+  interactive visual review before customer deployment
 
 ## Product scope
 
@@ -104,7 +105,8 @@ This complements but does not replace native SQL backup compliance.
 - [ ] Review the packaged GUI at 100%, 125%, 150%, and 200% scaling.
 - [ ] Generate and inspect one PDF and one Word report from the packaged application.
 - [x] Increment the patch version and build a new full private release package.
-- [ ] Verify executable versions, manifest hashes, clean startup, database migration, and rollback copy.
+- [x] Verify executable versions and manifest/package hashes independently.
+- [ ] Verify clean startup, database migration, and rollback copy on a deployment-like system.
 
 ### Recommended hardening
 
@@ -135,14 +137,15 @@ This complements but does not replace native SQL backup compliance.
 
 ## Latest release artifact
 
-- **Version:** 0.1.2
-- **Package:** `release\MiMonitoringService-v0.1.2-win-x64-FULL-PRIVATE.zip`
+- **Version:** 0.1.3
+- **Package:** `release\MiMonitoringService-v0.1.3-win-x64-FULL-PRIVATE.zip`
 - **Package size:** 211.72 MB
-- **GUI SHA-256:** `36B1AA6858AD05B3709F17C85A770BDD04D31F8F5297DA7B236EE9ADA9C6E712`
-- **Service SHA-256:** `5429979FA016CF5B8DB24C2B2108ABABC864D11EC6F881D3D8A052F7E46A2979`
+- **Package SHA-256:** `4F0BC1DCDB34BAB60CC195E74B1ACF4F92972F3D5E924BFD07E5190D0EDB2BEB`
+- **GUI SHA-256:** `717C9E2C0AA242FF48F97B2B56AA7F6CA6DA61CF2EBF51BD036C9461AD0C6B2F`
+- **Service SHA-256:** `4E4CAB05A66499E18C5E3D965031A389CBE453440C2B84EE2A8014E95800F9AD`
 - **Integrity:** Both executable hashes match `build-manifest.json`; GUI and service file versions
-  report 0.1.2; the license generator, private support bundle, and package SHA manifest are present.
-- **Preservation:** Existing v0.1.0 and v0.1.1 release directories were not modified.
+  report 0.1.3; all package SHA entries pass; required customer and private-support files are present.
+- **Preservation:** The existing v0.1.2 release archive was not modified.
 
 ## Definition of done
 
