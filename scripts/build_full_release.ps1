@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 $project = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $releaseRoot = Join-Path $project "release"
-$packageName = "MiMonitoringService-v0.1.1-win-x64-FULL-PRIVATE"
+$packageName = "MiMonitoringService-v0.1.2-win-x64-FULL-PRIVATE"
 $packageStageRoot = Join-Path $releaseRoot ".build\package"
 $package = Join-Path $packageStageRoot $packageName
 $archive = Join-Path $releaseRoot "$packageName.zip"

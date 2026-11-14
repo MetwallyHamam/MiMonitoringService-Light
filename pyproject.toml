@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mi-monitoring-service"
-version = "0.1.1"
+version = "0.1.2"
 description = "Windows service, IIS, disk, and server health monitoring agent"
 requires-python = ">=3.11,<3.14"
 dependencies = [

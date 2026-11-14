@@ -11,9 +11,9 @@ history, superseded ideas, release hashes, and repeated session logs have been r
 - **Latest completed work:** SQL session/blocking monitoring, guarded multi-session termination,
   lightweight backup-file assurance, and senior-review safety fixes
 - **Automated verification:** Ruff passed; 108 tests passed in 125.60 seconds
-- **Current release:** v0.1.1 is the last packaged release
-- **Workspace state:** Contains verified changes newer than v0.1.1
-- **Next release:** Build only after live SQL validation and final interactive visual review
+- **Current release:** v0.1.2 full private package built and integrity-verified
+- **Workspace state:** Source version and packaged artifacts are aligned at v0.1.2
+- **Next release step:** Complete live SQL validation and final interactive visual review before deployment
 
 ## Product scope
 
@@ -103,7 +103,7 @@ This complements but does not replace native SQL backup compliance.
 - [ ] Confirm native backup compliance and SQL Agent visibility with production-like permissions.
 - [ ] Review the packaged GUI at 100%, 125%, 150%, and 200% scaling.
 - [ ] Generate and inspect one PDF and one Word report from the packaged application.
-- [ ] Increment the patch version and build a new full private release package.
+- [x] Increment the patch version and build a new full private release package.
 - [ ] Verify executable versions, manifest hashes, clean startup, database migration, and rollback copy.
 
 ### Recommended hardening
@@ -132,6 +132,17 @@ This complements but does not replace native SQL backup compliance.
 7. Verify executable versions and SHA-256 manifest values independently.
 8. Test replacement while retaining `Customer\data` and confirm automatic schema migration.
 9. Record the final version, test count, artifact paths, hashes, and known limitations here.
+
+## Latest release artifact
+
+- **Version:** 0.1.2
+- **Package:** `release\MiMonitoringService-v0.1.2-win-x64-FULL-PRIVATE.zip`
+- **Package size:** 211.72 MB
+- **GUI SHA-256:** `36B1AA6858AD05B3709F17C85A770BDD04D31F8F5297DA7B236EE9ADA9C6E712`
+- **Service SHA-256:** `5429979FA016CF5B8DB24C2B2108ABABC864D11EC6F881D3D8A052F7E46A2979`
+- **Integrity:** Both executable hashes match `build-manifest.json`; GUI and service file versions
+  report 0.1.2; the license generator, private support bundle, and package SHA manifest are present.
+- **Preservation:** Existing v0.1.0 and v0.1.1 release directories were not modified.
 
 ## Definition of done
 
