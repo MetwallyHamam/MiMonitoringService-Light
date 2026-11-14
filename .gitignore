@@ -1,0 +1,17 @@
+.venv/
+build/
+dist/
+release/
+*.spec
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.test-tmp/
+.test-tmp-*
+.visual-runtime/
+support-private/
+support-dist/
+*.egg-info/
+*.pyc
+*.db
+*.log

@@ -1,0 +1,1 @@
+MiMonitoringService stores monitoring.db, SQLite runtime files, and logs in this folder.
